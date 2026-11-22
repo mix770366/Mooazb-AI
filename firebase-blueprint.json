@@ -1,0 +1,330 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile storing persistent cognitive engine preferences.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the user."
+        },
+        "preferredReasoningLevel": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "XHIGH"],
+          "description": "Persisted default reasoning tier selection."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "preferredReasoningLevel", "createdAt", "updatedAt"]
+    },
+    "CognitiveSession": {
+      "title": "CognitiveSession",
+      "description": "A user-owned AI cognitive workspace or code/math analysis session with 1M-token context tracking.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the session owner."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short descriptive session title."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["WORKSPACE", "CODE_MATH"],
+          "description": "Workspace operational mode."
+        },
+        "reasoningLevel": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "XHIGH"],
+          "description": "Active reasoning tier for the session."
+        },
+        "estimatedContextTokens": {
+          "type": "integer",
+          "description": "Estimated context tokens loaded in the 1M-token window."
+        },
+        "contextSummary": {
+          "type": "string",
+          "description": "Compact summary of attached files or context state."
+        },
+        "languageCode": {
+          "type": "string",
+          "enum": ["ar", "en"],
+          "description": "Preferred session UI language."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "mode", "reasoningLevel", "estimatedContextTokens", "contextSummary", "languageCode", "createdAt", "updatedAt"]
+    },
+    "SessionMessage": {
+      "title": "SessionMessage",
+      "description": "A single user or model message within a cognitive session.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the message owner."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["USER", "MODEL"],
+          "description": "Sender role."
+        },
+        "content": {
+          "type": "string",
+          "description": "Message body or generated analysis."
+        },
+        "reasoningLevel": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "XHIGH"],
+          "description": "Reasoning tier used for this turn."
+        },
+        "attachmentNames": {
+          "type": "array",
+          "description": "Bounded list of up to 10 attached filenames."
+        },
+        "latencyMs": {
+          "type": "integer",
+          "description": "Inference latency in milliseconds."
+        },
+        "tokenEstimate": {
+          "type": "integer",
+          "description": "Estimated tokens for this turn."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "role", "content", "reasoningLevel", "attachmentNames", "latencyMs", "tokenEstimate", "createdAt"]
+    },
+    "AgentWorkflowRun": {
+      "title": "AgentWorkflowRun",
+      "description": "An executed multi-step agentic workflow run with pre-flight indirect prompt injection audit.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the workflow owner."
+        },
+        "goal": {
+          "type": "string",
+          "description": "User-provided workflow objective."
+        },
+        "presetType": {
+          "type": "string",
+          "enum": ["SCHEDULE", "SORTING", "AUTOMATION", "CUSTOM"],
+          "description": "Workflow category."
+        },
+        "reasoningLevel": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "XHIGH"],
+          "description": "Reasoning tier used during planning."
+        },
+        "securityStatus": {
+          "type": "string",
+          "enum": ["SAFE", "SANITIZED", "BLOCKED"],
+          "description": "Prompt injection shield evaluation outcome."
+        },
+        "injectionRiskScore": {
+          "type": "integer",
+          "description": "Calculated risk score 0..100."
+        },
+        "securityNotes": {
+          "type": "string",
+          "description": "Human-readable audit summary."
+        },
+        "steps": {
+          "type": "array",
+          "description": "Bounded list of up to 15 structured agent execution step maps."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "goal", "presetType", "reasoningLevel", "securityStatus", "injectionRiskScore", "securityNotes", "steps", "createdAt", "updatedAt"]
+    },
+    "IdeWorkspace": {
+      "title": "IdeWorkspace",
+      "description": "A paired desktop IDE workspace node (VS Code, PyCharm, or IntelliJ IDEA) connected via Firestore.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the developer."
+        },
+        "ideType": {
+          "type": "string",
+          "enum": ["VS_CODE", "PYCHARM", "INTELLIJ"],
+          "description": "Target IDE platform."
+        },
+        "projectName": {
+          "type": "string",
+          "description": "Paired repository or project name."
+        },
+        "branchName": {
+          "type": "string",
+          "description": "Active Git branch."
+        },
+        "pairingCode": {
+          "type": "string",
+          "description": "Short bridge pairing identifier."
+        },
+        "bridgeStatus": {
+          "type": "string",
+          "enum": ["CONNECTED", "AWAITING_PAIRING", "PAUSED"],
+          "description": "Live bridge connection state."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "ideType", "projectName", "branchName", "pairingCode", "bridgeStatus", "createdAt", "updatedAt"]
+    },
+    "IdeTask": {
+      "title": "IdeTask",
+      "description": "A synced IDE diagnostic, diff patch proposal, or agentic handoff task linked to a paired IdeWorkspace.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the developer."
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "ID of the parent IdeWorkspace document."
+        },
+        "ideType": {
+          "type": "string",
+          "enum": ["VS_CODE", "PYCHARM", "INTELLIJ"],
+          "description": "Source/target IDE."
+        },
+        "taskType": {
+          "type": "string",
+          "enum": ["DIAGNOSTIC", "PATCH_REVIEW", "AGENT_HANDOFF"],
+          "description": "IDE workflow category."
+        },
+        "title": {
+          "type": "string",
+          "description": "Task or diagnostic headline."
+        },
+        "filePath": {
+          "type": "string",
+          "description": "Relative file path in the IDE workspace."
+        },
+        "language": {
+          "type": "string",
+          "description": "Programming language identifier."
+        },
+        "codeSnippet": {
+          "type": "string",
+          "description": "Relevant code buffer."
+        },
+        "stackTrace": {
+          "type": "string",
+          "description": "Compiler error or runtime stacktrace."
+        },
+        "diagnosis": {
+          "type": "string",
+          "description": "Gemini root-cause diagnosis and explanation."
+        },
+        "unifiedDiff": {
+          "type": "string",
+          "description": "Proposed unified diff patch."
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH"],
+          "description": "Estimated patch risk."
+        },
+        "reasoningLevel": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "XHIGH"],
+          "description": "Reasoning tier applied to this IDE task."
+        },
+        "securityStatus": {
+          "type": "string",
+          "enum": ["SAFE", "SANITIZED", "BLOCKED"],
+          "description": "Prompt injection check result."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING_ANALYSIS", "PATCH_READY", "APPROVED", "REJECTED", "APPLIED"],
+          "description": "Lifecycle status of the IDE task."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "workspaceId", "ideType", "taskType", "title", "filePath", "language", "codeSnippet", "stackTrace", "diagnosis", "unifiedDiff", "riskLevel", "reasoningLevel", "securityStatus", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile document persisting preferred reasoning tier."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/CognitiveSession" },
+      "description": "User-owned cognitive workspace and code/math sessions."
+    },
+    "/users/{userId}/sessions/{sessionId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/SessionMessage" },
+      "description": "Conversation turns within a cognitive session."
+    },
+    "/users/{userId}/workflows/{workflowId}": {
+      "schema": { "$ref": "#/entities/AgentWorkflowRun" },
+      "description": "Executed multi-step agentic workflows and security audit logs."
+    },
+    "/users/{userId}/ideWorkspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/IdeWorkspace" },
+      "description": "Paired desktop IDE workspace nodes (VS Code, PyCharm, IntelliJ IDEA)."
+    },
+    "/users/{userId}/ideTasks/{taskId}": {
+      "schema": { "$ref": "#/entities/IdeTask" },
+      "description": "Synced IDE diagnostics, diff patches, and agentic handoff tasks."
+    }
+  }
+}

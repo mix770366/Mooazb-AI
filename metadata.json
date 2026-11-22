@@ -1,0 +1,6 @@
+{
+  "name": "Mooazb AI",
+  "description": "مساحة عمل معرفية فائقة السرعة لإدارة الأكواد والوكلاء الآليين والتحليل متعدد الوسائط وسياق المليون رمز عبر 4 مستويات استدلال.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

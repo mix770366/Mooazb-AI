@@ -1,0 +1,242 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Deny all reads and writes by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HARDENED PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidReasoningLevel(level) {
+      return level in ['LOW', 'MEDIUM', 'HIGH', 'XHIGH'];
+    }
+
+    function isValidIdeType(ideType) {
+      return ideType in ['VS_CODE', 'PYCHARM', 'INTELLIJ'];
+    }
+
+    function isValidSecurityStatus(status) {
+      return status in ['SAFE', 'SANITIZED', 'BLOCKED'];
+    }
+
+    // --- ENTITY VALIDATION HELPERS ---
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             isValidReasoningLevel(data.preferredReasoningLevel) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCognitiveSession(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.mode in ['WORKSPACE', 'CODE_MATH'] &&
+             isValidReasoningLevel(data.reasoningLevel) &&
+             data.estimatedContextTokens is int && data.estimatedContextTokens >= 0 && data.estimatedContextTokens <= 1000000 &&
+             data.contextSummary is string && data.contextSummary.size() <= 2000 &&
+             data.languageCode in ['ar', 'en'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidSessionMessage(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.role in ['USER', 'MODEL'] &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 32000 &&
+             isValidReasoningLevel(data.reasoningLevel) &&
+             data.attachmentNames is list && data.attachmentNames.size() <= 10 &&
+             (data.attachmentNames.size() == 0 || data.attachmentNames[0] is string) &&
+             data.latencyMs is int && data.latencyMs >= 0 && data.latencyMs <= 600000 &&
+             data.tokenEstimate is int && data.tokenEstimate >= 0 && data.tokenEstimate <= 1000000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidAgentWorkflowRun(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.goal is string && data.goal.size() >= 1 && data.goal.size() <= 2000 &&
+             data.presetType in ['SCHEDULE', 'SORTING', 'AUTOMATION', 'CUSTOM'] &&
+             isValidReasoningLevel(data.reasoningLevel) &&
+             isValidSecurityStatus(data.securityStatus) &&
+             data.injectionRiskScore is int && data.injectionRiskScore >= 0 && data.injectionRiskScore <= 100 &&
+             data.securityNotes is string && data.securityNotes.size() <= 1000 &&
+             data.steps is list && data.steps.size() <= 15 &&
+             (data.steps.size() == 0 || data.steps[0] is map) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidIdeWorkspace(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             isValidIdeType(data.ideType) &&
+             data.projectName is string && data.projectName.size() >= 1 && data.projectName.size() <= 120 &&
+             data.branchName is string && data.branchName.size() >= 1 && data.branchName.size() <= 80 &&
+             data.pairingCode is string && data.pairingCode.size() >= 4 && data.pairingCode.size() <= 24 &&
+             data.bridgeStatus in ['CONNECTED', 'AWAITING_PAIRING', 'PAUSED'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidIdeTask(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             isValidId(data.workspaceId) &&
+             isValidIdeType(data.ideType) &&
+             data.taskType in ['DIAGNOSTIC', 'PATCH_REVIEW', 'AGENT_HANDOFF'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.filePath is string && data.filePath.size() <= 300 &&
+             data.language is string && data.language.size() >= 1 && data.language.size() <= 40 &&
+             data.codeSnippet is string && data.codeSnippet.size() <= 20000 &&
+             data.stackTrace is string && data.stackTrace.size() <= 10000 &&
+             data.diagnosis is string && data.diagnosis.size() <= 15000 &&
+             data.unifiedDiff is string && data.unifiedDiff.size() <= 20000 &&
+             data.riskLevel in ['LOW', 'MEDIUM', 'HIGH'] &&
+             isValidReasoningLevel(data.reasoningLevel) &&
+             isValidSecurityStatus(data.securityStatus) &&
+             data.status in ['PENDING_ANALYSIS', 'PATCH_READY', 'APPROVED', 'REJECTED', 'APPLIED'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // --- USER PROFILE ---
+    match /users/{userId} {
+      allow list: if false;
+      allow get, delete: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       incoming().keys().hasAll(['userId', 'preferredReasoningLevel', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'preferredReasoningLevel', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['preferredReasoningLevel', 'updatedAt']);
+    }
+
+    // --- USER-SCOPED COLLECTIONS ---
+    match /users/{userId}/sessions/{sessionId} {
+      allow list: if isOwner(userId);
+      allow get, delete: if isOwner(userId) && isValidId(sessionId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(sessionId) &&
+                       incoming().keys().hasAll(['userId', 'title', 'mode', 'reasoningLevel', 'estimatedContextTokens', 'contextSummary', 'languageCode', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'title', 'mode', 'reasoningLevel', 'estimatedContextTokens', 'contextSummary', 'languageCode', 'createdAt', 'updatedAt']) &&
+                       isValidCognitiveSession(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(sessionId) &&
+                       isValidCognitiveSession(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().mode == existing().mode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['title', 'reasoningLevel', 'estimatedContextTokens', 'contextSummary', 'languageCode', 'updatedAt']);
+
+      match /messages/{messageId} {
+        allow list: if isOwner(userId) && isValidId(sessionId);
+        allow get, delete: if isOwner(userId) && isValidId(sessionId) && isValidId(messageId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(sessionId) &&
+                         isValidId(messageId) &&
+                         incoming().keys().hasAll(['userId', 'role', 'content', 'reasoningLevel', 'attachmentNames', 'latencyMs', 'tokenEstimate', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'role', 'content', 'reasoningLevel', 'attachmentNames', 'latencyMs', 'tokenEstimate', 'createdAt']) &&
+                         isValidSessionMessage(incoming(), userId) &&
+                         exists(/databases/$(database)/documents/users/$(userId)/sessions/$(sessionId));
+
+        allow update: if false;
+      }
+    }
+
+    match /users/{userId}/workflows/{workflowId} {
+      allow list: if isOwner(userId);
+      allow get, delete: if isOwner(userId) && isValidId(workflowId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(workflowId) &&
+                       incoming().keys().hasAll(['userId', 'goal', 'presetType', 'reasoningLevel', 'securityStatus', 'injectionRiskScore', 'securityNotes', 'steps', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'goal', 'presetType', 'reasoningLevel', 'securityStatus', 'injectionRiskScore', 'securityNotes', 'steps', 'createdAt', 'updatedAt']) &&
+                       isValidAgentWorkflowRun(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(workflowId) &&
+                       isValidAgentWorkflowRun(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['steps', 'securityStatus', 'securityNotes', 'updatedAt']);
+    }
+
+    match /users/{userId}/ideWorkspaces/{workspaceId} {
+      allow list: if isOwner(userId);
+      allow get, delete: if isOwner(userId) && isValidId(workspaceId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(workspaceId) &&
+                       incoming().keys().hasAll(['userId', 'ideType', 'projectName', 'branchName', 'pairingCode', 'bridgeStatus', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'ideType', 'projectName', 'branchName', 'pairingCode', 'bridgeStatus', 'createdAt', 'updatedAt']) &&
+                       isValidIdeWorkspace(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(workspaceId) &&
+                       isValidIdeWorkspace(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().ideType == existing().ideType &&
+                       incoming().pairingCode == existing().pairingCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['projectName', 'branchName', 'bridgeStatus', 'updatedAt']);
+    }
+
+    match /users/{userId}/ideTasks/{taskId} {
+      allow list: if isOwner(userId);
+      allow get, delete: if isOwner(userId) && isValidId(taskId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(taskId) &&
+                       incoming().keys().hasAll(['userId', 'workspaceId', 'ideType', 'taskType', 'title', 'filePath', 'language', 'codeSnippet', 'stackTrace', 'diagnosis', 'unifiedDiff', 'riskLevel', 'reasoningLevel', 'securityStatus', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'workspaceId', 'ideType', 'taskType', 'title', 'filePath', 'language', 'codeSnippet', 'stackTrace', 'diagnosis', 'unifiedDiff', 'riskLevel', 'reasoningLevel', 'securityStatus', 'status', 'createdAt', 'updatedAt']) &&
+                       isValidIdeTask(incoming(), userId) &&
+                       exists(/databases/$(database)/documents/users/$(userId)/ideWorkspaces/$(incoming().workspaceId));
+
+      allow update: if isOwner(userId) &&
+                       isValidId(taskId) &&
+                       isValidIdeTask(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().workspaceId == existing().workspaceId &&
+                       incoming().createdAt == existing().createdAt &&
+                       !(existing().status in ['REJECTED', 'APPLIED']) &&
+                       (
+                         (
+                           existing().status in ['PENDING_ANALYSIS', 'PATCH_READY'] &&
+                           incoming().status in ['PATCH_READY', 'APPROVED', 'REJECTED'] &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['diagnosis', 'unifiedDiff', 'riskLevel', 'reasoningLevel', 'securityStatus', 'status', 'updatedAt'])
+                         ) ||
+                         (
+                           existing().status == 'APPROVED' &&
+                           incoming().status == 'APPLIED' &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+                         )
+                       );
+    }
+  }
+}
